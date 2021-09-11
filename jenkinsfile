@@ -18,6 +18,7 @@ pipeline {
         sh 'mvn -f MyWebApp/pom.xml sonar:sonar'
         }
       }
+	  }
    stage ('JaCoCo') {
       steps {
       jacoco()
@@ -33,11 +34,13 @@ pipeline {
     deploy adapters: [tomcat9(credentialsId: '0d43ecd6-99ca-40fb-b6c6-0f1ce189cfad', path: '', url: 'http://ec2-3-16-55-192.us-east-2.compute.amazonaws.com:8080')], contextPath: null, war: '**/*.war'
     
     }
+	}
     stage('slacknotification'){
     steps{
             echo "deployed to DEV Env successfully"
         slackSend(channel:'devopsnofity', message: "Job is successful, here is the info - Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
     }
+	}
     
     stage('Approve for QA Deploy'){
     steps{
