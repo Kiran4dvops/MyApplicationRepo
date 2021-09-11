@@ -6,11 +6,7 @@ pipeline {
   }
   
   stages {
-      stage('checkout'){
-          steps {
-            checkout([$class: 'GitSCM', branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: '89667b27-a654-487d-8da3-e8b42ec41e51', url: 'https://github.com/Kiran4dvops/MyApplicationRepo.git']]])  
-          }
-      }
+      
     stage ('Build') {
       steps {
       sh "mvn clean install -f MyWebApp/pom.xml"
