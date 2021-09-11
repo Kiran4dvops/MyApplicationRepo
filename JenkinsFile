@@ -1,0 +1,68 @@
+pipeline {
+  agent any
+ 
+  tools {
+    maven 'Maven'
+  }
+  
+  stages {
+      stage('checkout'){
+          steps {
+            checkout([$class: 'GitSCM', branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: '89667b27-a654-487d-8da3-e8b42ec41e51', url: 'https://github.com/Kiran4dvops/MyApplicationRepo.git']]])  
+          }
+      }
+    stage ('Build') {
+      steps {
+      sh "mvn clean install -f MyWebApp/pom.xml"
+      }
+    }
+   stage ('Code Quality') {
+     steps {
+        withSonarQubeEnv('SonarQube') {
+        sh 'mvn -f MyWebApp/pom.xml sonar:sonar'
+        }
+      }
+   stage ('JaCoCo') {
+      steps {
+      jacoco()
+      }
+    }
+    stage ('nexusuploader'){
+      steps{
+        nexusArtifactUploader artifacts: [[artifactId: 'MyWebApp', classifier: '', file: 'MyWebApp/target/MyWebApp.war', type: 'war']], credentialsId: 'e9ddbbca-990d-472a-a396-b635f33dc71a', groupId: 'MyWebApp', nexusUrl: 'ec2-13-58-156-164.us-east-2.compute.amazonaws.com:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'maven-snapshots', version: '1.0-SNAPSHOT'
+    }
+    }
+    stage('Dev Deploy'){
+    steps{
+    deploy adapters: [tomcat9(credentialsId: '0d43ecd6-99ca-40fb-b6c6-0f1ce189cfad', path: '', url: 'http://ec2-3-16-55-192.us-east-2.compute.amazonaws.com:8080')], contextPath: null, war: '**/*.war'
+    
+    }
+    stage('slacknotification'){
+    steps{
+            echo "deployed to DEV Env successfully"
+        slackSend(channel:'devopsnofity', message: "Job is successful, here is the info - Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+    }
+    
+    stage('Approve for QA Deploy'){
+    steps{
+    echo "Taking approval from DEV Manager for QA Deployment"
+        timeout(time: 7, unit: 'DAYS') {
+        input message: 'Do you want to deploy?', submitter: 'admin'
+        }
+    }
+    
+    }
+    stage ('QA Deploy') {
+      steps {
+        echo "deploying to QA Env "
+           deploy adapters: [tomcat9(credentialsId: '0d43ecd6-99ca-40fb-b6c6-0f1ce189cfad', path: '', url: 'http://ec2-3-16-55-192.us-east-2.compute.amazonaws.com:8080')], contextPath: null, war: '**/*.war'
+       }
+       }
+        stage ('Slack Notification for QA Deploy') {
+      steps {
+        echo "deployed to QA Env successfully"
+        slackSend(channel:'devopsnofity', message: "Job is successful, here is the info - Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+      }
+    }  
+  }
+}
